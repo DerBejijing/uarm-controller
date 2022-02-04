@@ -1,13 +1,14 @@
+import os
+import random
+
 from rich import box
+from rich.align import Align
 from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.padding import Padding
-from rich.align import Align
 
-import os
-import random
 import threading
 import time
 
