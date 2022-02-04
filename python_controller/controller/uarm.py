@@ -1,19 +1,31 @@
 import serial
+import threading
 import time
 
-class SerialUarm:
+###############
+# not used yet
+###############
+
+class SerialUarm(threading.Thread):
 	def __init__(self, port, baud):
-		super(SerialUarm, self).__init__()
+		threading.Thread.__init__(self)
 		self.port = port
 		self.baud = baud
 		self.serialConnection = serial.Serial(port, baud)
+		self.running = True
+		self.ready = False
 
-	def get_port(self):
-		return self.port
-		
-	def waitReady(self):
-		while True:
-			if self.serialConnection.inWaiting() > 0:
-				if self.serialConnection.readline() == "ok":	# <-- change 'ok'
-					return
-			time.sleep(1/5)
+
+	# main method
+	# waits for return codes
+	def run(self):
+		self.wait_ready()
+
+		# run until thread gets killed
+		while self.running:
+
+			# if data is recieved
+			if self.serial_interface.inWaiting():
+
+				# read line and remove \r\n
+				line = self.serial_interface.readline().decode().replace('\r','').replace('\n','')
