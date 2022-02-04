@@ -31,15 +31,11 @@ class SerialArduino(threading.Thread):
 				# read line and remove \r\n
 				line = self.serial_interface.readline().decode().replace('\r','').replace('\n','')
 
-				os.system("echo 'recieved: {}' >> log.txt".format(line))
-
 				# if line is a number in a certain range, it is the return of a command
 				if ["-2", "-1", "0"].count(line): self.command_blocking = False
 
 				# else it means the controller detected a user input
 				else: self.parse_control_changes(line)
-
-		os.system("echo 'dead' >> log.txt")
 
 
 	# setter method for mainframe reference
@@ -50,8 +46,6 @@ class SerialArduino(threading.Thread):
 	# used internally to wait until the arduino sends an "init"
 	# once it has recieved it, it sets self.ready to True
 	def wait_ready(self):
-		os.system("echo 'init begin' >> log.txt")
-
 		# loop forever
 		while True:
 
@@ -61,7 +55,6 @@ class SerialArduino(threading.Thread):
 				# if it matches 'init', set self.ready to True and return
 				if self.serial_interface.readline().decode().replace('\r','').replace('\n','') == "init":
 					self.ready = True
-					os.system("echo 'init end' >> log.txt")
 					return
 
 
@@ -88,9 +81,7 @@ class SerialArduino(threading.Thread):
 				button = change.split(':')[0]
 				value = change.split(':')[1]
 				if value == "1":
-					os.system("echo 'mainframe press start' >> log.txt")
 					self.mainframe.press_button(button)
-					os.system("echo 'mainframe press done' >> log.txt")
 				else:
 					self.mainframe.release_button(button)
 
@@ -99,7 +90,7 @@ class SerialArduino(threading.Thread):
 				potentiometer = change.split(':')[0]
 
 			else:
-				print("Invalid value: {}".format(change))
+				pass
 
 
 	# sends a command and waites for a reply consisting of a return code
@@ -115,32 +106,9 @@ class SerialArduino(threading.Thread):
 		# wait until the thread's main function sets self.blocking to False
 		# This happens when it recieves a return code
 
-		os.system("echo 'command sent' >> log.txt")
-
 		while self.command_blocking: pass
-
-		os.system("echo 'command executed' >> log.txt")
-
 		return
-
-
-	# deprecated
-	def wait_run_command2(self, command) -> int:
-		print("Running {}".format(command))
-		while True:
-			if self.run_command(command):
-				return 1
-			time.sleep(1/5)
-
-
-	# deprecated
-	def run_command(self, command) -> int:
-		if self.command_blocking:
-			return 0
-		self.serial_interface.write(command.replace('\n','').encode() + os.linesep.encode())
-		self.command_blocking = True
-		return 1
-
+		
 
 	# shutdown the thread
 	def shutdown(self):
