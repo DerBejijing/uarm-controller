@@ -37,7 +37,7 @@ There are two programs in this repo:
 
 ### Arduino user interface
 This can either be uploaded using the IDE, arduino-builder, etc.  
-The source code is found in ./arduino_user_interface/  
+The source code is found in [./arduino_user_interface/](https://github.com/DerBejijing/uarm-controller/tree/main/arduino_user_interface)  
 
 ### Graphical interface and mainframe
 This python program is written for python3 and requires the following packages:
