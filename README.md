@@ -44,4 +44,4 @@ This python program is written for python3 and requires the following packages:
   - pyserial (serial communication with arduino and uArm)  
   - rich (terminal user interface)  
 The sourcecode still requires a lot of optimisation.  
-It can be found in ./python_controller/  
+It can be found in [./python_controller/](https://github.com/DerBejijing/uarm-controller/tree/main/python_controller)  
