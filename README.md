@@ -16,7 +16,7 @@ My goal was to build a system that could:
   - recognize features in images with machine vision  
 
 A manual on how to build this system on your own, how to extend it and my journey on building it can be found in ./manuals/  
-All circuits and diagrams can be found in ./diagrams_and_circuits/  
+All circuits and diagrams can be found in [./diagrams_and_circuits/](https://github.com/DerBejijing/uarm-controller/tree/main/diagrams_and_circuits)  
 An explaination of all the code is found further below.  
 
 <br/>
