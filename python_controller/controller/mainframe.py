@@ -116,37 +116,47 @@ class Mainframe(threading.Thread):
 		)
 
 
+		# split into 2 areas
+		# the names are choosen arbitrarily and do not represent their real function as I found out later
+		# which is stupid, of course
 		layout["right"].split(
 			Layout(Panel("", title="UArm Info", box=box.SQUARE), name="uarm_info"),
 			Layout(Panel("", box=box.SQUARE), name="system_info", ratio=3)
 		)
 
 
+		# set uarm_running
 		if self.uarm.running: uarm_running = "[green]yes[/green]"
 		else: uarm_running = "[red]no[/red]"
 
+		# set uarm_temperature from self.uarm
 		if self.uarm.temperature == "unknown": uarm_temperature = "[yellow]unknown[/yellow]"
 		else: uarm_temperature = "[green]{}°C[/green]".format(self.uarm.uarm_temperature)
 
 
+		# split into 2 Panels showing data about uArm and LASER
 		layout["uarm_info"].split_row(
 			Layout(Panel(Padding(Align("uArm Speed: [green]{}[/green]\nuArm running: {}\nuArm temperature: {}".format(self.uarm.speed, uarm_running, uarm_temperature)), (1, 1)), box=box.SIMPLE)),
 			Layout(Panel(Padding(Align("LASER enabled: {}\nLASER active: {}\nLASER power: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
 		)
 
 
-
+		# split the other (bigger) panel into three smaller panels
 		layout["system_info"].split(
 			Layout(name="system_info_1"),
 			Layout(name="system_info_2"),
 			Layout(name="system_info_3")
 		)
 
+
+		# split into 2 Panels showing CPU and RAM data
 		layout["system_info_1"].split_row(
 			Layout(Panel(Padding(Align("CPU frequency: {}\nCPU usage: {}\nCPU temperature: {}".format(SystemInfo.get_cpu_freq(), SystemInfo.get_cpu_usage(), SystemInfo.get_cpu_temp())), (1, 1)), box=box.SIMPLE)),
 			Layout(Panel(Padding(Align("Memory available: {}\nMemory usage: {}\nMemory used: {}".format(SystemInfo.get_memory_available(), SystemInfo.get_memory_usage(), SystemInfo.get_memory_used())), (1, 1)), box=box.SIMPLE))
 		)
 
+
+		# collect information about network
 		network_state = SystemInfo.get_network_state()
 		network_name = "[yellow]----------[/yellow]"
 		network_speed = "[yellow]---------[/yellow]"
@@ -155,11 +165,15 @@ class Mainframe(threading.Thread):
 		network_interface = SystemInfo.get_active_network_interface_name(network_ip)
 		network_mac = SystemInfo.get_mac(network_interface)
 
+
+		# split into 2 Panels showing network information
 		layout["system_info_2"].split_row(
 			Layout(Panel(Padding(Align("Network state: {}\nNetwork name: {}\nNetwork speed: {}".format(network_state, network_name, network_speed)), (1, 1)), box=box.SIMPLE)),
 			Layout(Panel(Padding(Align("Connection Type: {}\nIP: [green]{}[/green]\nMAC: [green]{}[/green]".format(network_connection_type, network_ip, network_mac)), (1, 1)), box=box.SIMPLE))
 		)
 
+
+		# split into 2 Panels showing SSH and cooling data
 		layout["system_info_3"].split_row(
 			Layout(Panel(Padding(Align("SSH server running: {}\nSSH connected: {}\nSSH account: {}".format("", "", "")), (1, 1)), box=box.SIMPLE)),
 			Layout(Panel(Padding(Align("Fan speed 1: {}\nFan speed 2: {}\nFan speed 3: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
@@ -171,6 +185,7 @@ class Mainframe(threading.Thread):
 		item_list = self._generate_list(self.selected_item)
 
 		# insert all programs into the previously generated area
+		# the names are arbitrary, as they will not be used to determine the active element
 		layout["left"].split(
 			Layout(item_list[0], name="a", size=4),
 			Layout(item_list[1], name="a", size=4),
@@ -213,7 +228,11 @@ class Mainframe(threading.Thread):
 				else: self._process_release_button(i)
 
 
-	# main method
+	# thread main method
+	# checks, if the display should be updated
+	# if it should, or 2 seconds have passed, recreate it's contents
+	# that way it does not update too often, while still keeping information about CPU,
+	#  RAM, network or temperature up to date
 	def run(self):
 		with Live(self._generate_layout(), refresh_per_second=10) as live:
 			while True:
