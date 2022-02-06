@@ -1,4 +1,5 @@
 import os
+import psutil
 import random
 
 from rich import box
@@ -8,6 +9,9 @@ from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.padding import Padding
+
+import socket
+import subprocess
 
 import threading
 import time
@@ -23,6 +27,8 @@ class Mainframe(threading.Thread):
 		self.buttons_changed = False
 		self.items = 7
 		self.buttons = 7
+
+		self.display_timer = 0
 
 		# initialize array of button states
 		self.button_states = [0 for _ in range(self.buttons)]
@@ -116,8 +122,15 @@ class Mainframe(threading.Thread):
 		)
 
 
+		if self.uarm.running: uarm_running = "[green]yes[/green]"
+		else: uarm_running = "[red]no[/red]"
+
+		if self.uarm.temperature == "unknown": uarm_temperature = "[yellow]unknown[/yellow]"
+		else: uarm_temperature = "[green]{}°C[/green]".format(self.uarm.uarm_temperature)
+
+
 		layout["uarm_info"].split_row(
-			Layout(Panel(Padding(Align("uArm Speed: {}\nuArm running: {}\nuArm temperature: {}".format("", "", "")), (1, 1)), box=box.SIMPLE)),
+			Layout(Panel(Padding(Align("uArm Speed: [green]{}[/green]\nuArm running: {}\nuArm temperature: {}".format(self.uarm.speed, uarm_running, uarm_temperature)), (1, 1)), box=box.SIMPLE)),
 			Layout(Panel(Padding(Align("LASER enabled: {}\nLASER active: {}\nLASER power: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
 		)
 
@@ -130,13 +143,21 @@ class Mainframe(threading.Thread):
 		)
 
 		layout["system_info_1"].split_row(
-			Layout(Panel(Padding(Align("CPU usage: {}\nCPU frequency: {}\nCPU temperature: {}".format("", "", "")), (1, 1)), box=box.SIMPLE)),
-			Layout(Panel(Padding(Align("Memory usage: {}\nMemory available: {}\nMemory used: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
+			Layout(Panel(Padding(Align("CPU frequency: {}\nCPU usage: {}\nCPU temperature: {}".format(SystemInfo.get_cpu_freq(), SystemInfo.get_cpu_usage(), SystemInfo.get_cpu_temp())), (1, 1)), box=box.SIMPLE)),
+			Layout(Panel(Padding(Align("Memory available: {}\nMemory usage: {}\nMemory used: {}".format(SystemInfo.get_memory_available(), SystemInfo.get_memory_usage(), SystemInfo.get_memory_used())), (1, 1)), box=box.SIMPLE))
 		)
 
+		network_state = SystemInfo.get_network_state()
+		network_name = "[yellow]----------[/yellow]"
+		network_speed = "[yellow]---------[/yellow]"
+		network_connection_type = SystemInfo.get_network_type()
+		network_ip = SystemInfo.get_ip()
+		network_interface = SystemInfo.get_active_network_interface_name(network_ip)
+		network_mac = SystemInfo.get_mac(network_interface)
+
 		layout["system_info_2"].split_row(
-			Layout(Panel(Padding(Align("Network state: {}\nNetwork name: {}\nNetwork speed: {}".format("", "", "")), (1, 1)), box=box.SIMPLE)),
-			Layout(Panel(Padding(Align("Connection Type: {}\nIP: {}\nMAC: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
+			Layout(Panel(Padding(Align("Network state: {}\nNetwork name: {}\nNetwork speed: {}".format(network_state, network_name, network_speed)), (1, 1)), box=box.SIMPLE)),
+			Layout(Panel(Padding(Align("Connection Type: {}\nIP: [green]{}[/green]\nMAC: [green]{}[/green]".format(network_connection_type, network_ip, network_mac)), (1, 1)), box=box.SIMPLE))
 		)
 
 		layout["system_info_3"].split_row(
@@ -204,6 +225,104 @@ class Mainframe(threading.Thread):
 					self.buttons_changed = False
 
 				# check if the display should be updated
-				if self.display_changed:
+				if self.display_changed or self.display_timer == 20:
 					live.update(self._generate_layout())
+					self.display_timer = 0
 					self.display_changed = False
+
+				self.display_timer = self.display_timer + 1
+
+
+class SystemInfo:
+	def get_cpu_usage() -> str:
+		usage = psutil.cpu_percent()
+		if usage < 50: return "[green]{}%[/green]".format(usage)
+		elif usage < 70: return "[yellow]{}%[/yellow]".format(usage)
+		else: return "[red]{}%[/red]".format(usage)
+
+
+	def get_cpu_freq() -> str:
+		freq_current = psutil.cpu_freq()[0]
+		freq_max = psutil.cpu_freq()[2]
+		return "[green]{}MHz[/green] / [green]{}MHz[/green]".format(freq_current, freq_max)
+
+
+	def get_cpu_temp() -> str:
+		temp = float(subprocess.check_output(["cat", "/sys/class/thermal/thermal_zone0/temp"]).decode('UTF-8')) / 1000
+		if temp < 50: return "[green]{}°C[/green]".format(temp)
+		elif temp < 70: return "[yellow]{}°C[/yellow]".format(temp)
+		elif temp < 100: return "[red]{}°C[/red]".format(temp)
+		else: return "[red]THERMAL MELTDOWN[/red]"
+
+
+	def get_memory_usage() -> str:
+		usage = psutil.virtual_memory()[2]
+		if usage < 40: return "[green]{}%[/green]".format(usage)
+		elif usage < 70: return "[yellow]{}%[/yellow]".format(usage)
+		else: return "[red]{}%[/red]".format(usage)
+
+
+	# making a function to do this is actually pretty stupid
+	def get_memory_available() -> str:
+		return "[green]{}MB[/green]".format(round(psutil.virtual_memory()[0] / 1000000, 2))
+
+
+	def get_memory_used() -> str:
+		used = round(psutil.virtual_memory()[3] / 100000, 2)
+		usage = psutil.virtual_memory()[2]
+		if usage < 40: return "[green]{}MB[/green]".format(used)
+		elif usage < 70: return "[yellow]{}MB[/yellow]".format(used)
+		else: return "[red]{}MB[/red]".format(used)
+
+
+	def get_network_state() -> str:
+		try:
+			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			s.settimeout(0.1)
+			s.connect(("1.1.1.1", 80))
+			return "[green]connected[/green]"			
+		except OSError:
+			pass
+		return "[yellow]Not connected[/yellow]"
+
+
+	def get_network_type() -> str:
+		network_stats = psutil.net_if_stats()
+		for interface in network_stats:
+			if interface.startswith("en"):
+				if psutil.net_if_stats()[interface].isup: return "[green]wired connection[/green]"
+			if interface.startswith("eth"):
+				if psutil.net_if_stats()[interface].isup: return "[green]wired connection[/green]"
+			if interface.startswith("wl"):
+				if psutil.net_if_stats()[interface].isup: return "[green]wireless connection[/green]"
+		return "[yellow]Unknown[/yellow]"
+
+
+	# https://kbarik.wordpress.com/2020/01/16/get-ip-address-mac-address-and-network-interface-name-using-python-os-independent/
+	def get_active_network_interface_name(ipv4Address):
+		if ipv4Address != "":
+			nics = psutil.net_if_addrs()
+			netInterfaceName = [i for i in nics for j in nics[i] if j.address==ipv4Address and j.family==socket.AF_INET][0]
+			return netInterfaceName
+		return ""
+
+
+	# https://kbarik.wordpress.com/2020/01/16/get-ip-address-mac-address-and-network-interface-name-using-python-os-independent/
+	def get_ip():
+		try:
+			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			s.connect(("1.1.1.1", 80))
+			ip = s.getsockname()[0]
+			s.close()
+		except OSError:
+			return ""
+		return ip
+
+
+	# https://kbarik.wordpress.com/2020/01/16/get-ip-address-mac-address-and-network-interface-name-using-python-os-independent/
+	def get_mac(netInterfaceName) -> str:
+		if netInterfaceName != "":
+			nics = psutil.net_if_addrs()
+			macAddress = ([j.address for i in nics for j in nics[i] if i==netInterfaceName and j.family==psutil.AF_LINK])[0]
+			return macAddress.replace('-',':')
+		return ""
