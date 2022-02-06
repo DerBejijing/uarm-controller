@@ -252,20 +252,26 @@ class Mainframe(threading.Thread):
 				self.display_timer = self.display_timer + 1
 
 
+# class to retrieve system information
 class SystemInfo:
+	# returns a string containing the cpu usage in percent
+	# a color depending on the value gets applied
 	def get_cpu_usage() -> str:
 		usage = psutil.cpu_percent()
 		if usage < 50: return "[green]{}%[/green]".format(usage)
 		elif usage < 70: return "[yellow]{}%[/yellow]".format(usage)
 		else: return "[red]{}%[/red]".format(usage)
 
-
+	# returns a string showing the cpu speed
 	def get_cpu_freq() -> str:
 		freq_current = psutil.cpu_freq()[0]
 		freq_max = psutil.cpu_freq()[2]
 		return "[green]{}MHz[/green] / [green]{}MHz[/green]".format(freq_current, freq_max)
 
 
+	# returns a string containing the cpu temperature
+	# a color depending on the value gets applied
+	# TODO: do the same thing with psutil to achieve consistency
 	def get_cpu_temp() -> str:
 		temp = float(subprocess.check_output(["cat", "/sys/class/thermal/thermal_zone0/temp"]).decode('UTF-8')) / 1000
 		if temp < 50: return "[green]{}°C[/green]".format(temp)
@@ -274,6 +280,8 @@ class SystemInfo:
 		else: return "[red]THERMAL MELTDOWN[/red]"
 
 
+	# returns a string containing the memory usage in percent
+	# a color depending on the value gets applied
 	def get_memory_usage() -> str:
 		usage = psutil.virtual_memory()[2]
 		if usage < 40: return "[green]{}%[/green]".format(usage)
@@ -281,11 +289,15 @@ class SystemInfo:
 		else: return "[red]{}%[/red]".format(usage)
 
 
+	# returns a string containing the size of the physical system memory
 	# making a function to do this is actually pretty stupid
 	def get_memory_available() -> str:
 		return "[green]{}MB[/green]".format(round(psutil.virtual_memory()[0] / 1000000, 2))
 
 
+	# returns a string containing the amount of memory being used by the system
+	# a color depending on the value gets applied
+	# TODO: make a similar function returning the amount of memory being used by the program
 	def get_memory_used() -> str:
 		used = round(psutil.virtual_memory()[3] / 100000, 2)
 		usage = psutil.virtual_memory()[2]
@@ -294,6 +306,9 @@ class SystemInfo:
 		else: return "[red]{}MB[/red]".format(used)
 
 
+	# returns a string containing either "connected" or "Not connected" depending
+	#  on whether or not the system is connected to the internet
+	# a color depending on the value gets applied
 	def get_network_state() -> str:
 		try:
 			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -305,6 +320,11 @@ class SystemInfo:
 		return "[yellow]Not connected[/yellow]"
 
 
+	# returns a string containing information about the connection:
+	#  wireless
+	#  wired
+	#  weird (bad joke but actually true)
+	# a color depending on the value gets applied
 	def get_network_type() -> str:
 		network_stats = psutil.net_if_stats()
 		for interface in network_stats:
@@ -314,9 +334,10 @@ class SystemInfo:
 				if psutil.net_if_stats()[interface].isup: return "[green]wired connection[/green]"
 			if interface.startswith("wl"):
 				if psutil.net_if_stats()[interface].isup: return "[green]wireless connection[/green]"
-		return "[yellow]Unknown[/yellow]"
+		return "[yellow]Weird[/yellow]"
 
 
+	# returns the network interface for a given IP
 	# https://kbarik.wordpress.com/2020/01/16/get-ip-address-mac-address-and-network-interface-name-using-python-os-independent/
 	def get_active_network_interface_name(ipv4Address):
 		if ipv4Address != "":
@@ -326,6 +347,7 @@ class SystemInfo:
 		return ""
 
 
+	# returns the system's IP
 	# https://kbarik.wordpress.com/2020/01/16/get-ip-address-mac-address-and-network-interface-name-using-python-os-independent/
 	def get_ip():
 		try:
@@ -338,6 +360,7 @@ class SystemInfo:
 		return ip
 
 
+	# returns the mac adress of a network interface
 	# https://kbarik.wordpress.com/2020/01/16/get-ip-address-mac-address-and-network-interface-name-using-python-os-independent/
 	def get_mac(netInterfaceName) -> str:
 		if netInterfaceName != "":
