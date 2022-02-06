@@ -262,7 +262,7 @@ class SystemInfo:
 		elif usage < 70: return "[yellow]{}%[/yellow]".format(usage)
 		else: return "[red]{}%[/red]".format(usage)
 
-	# returns a string showing the cpu speed
+	# returns a string containing the cpu speed
 	def get_cpu_freq() -> str:
 		freq_current = psutil.cpu_freq()[0]
 		freq_max = psutil.cpu_freq()[2]
