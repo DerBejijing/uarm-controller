@@ -12,7 +12,9 @@ class SerialUarm(threading.Thread):
 		self.port = port
 		self.baud = baud
 		self.serialConnection = serial.Serial(port, baud)
-		self.running = True
+		self.temperature = "unknown"
+		self.speed = 100
+		self.running = False
 		self.ready = False
 
 
