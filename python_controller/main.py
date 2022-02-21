@@ -11,18 +11,8 @@ from controller import uarm
 
 
 def main():
-	# These might change
-	s = arduino.SerialArduino("/dev/ttyACM0", 9600)
-	u = uarm.SerialUarm("/dev/ttyACM1", 115200)
-
 	m = mainframe.Mainframe()
-	m.set_arduino(s)
-	m.set_uarm(u)
-
-	s.set_mainframe(m)
-	s.start()
-	s.block_ready()
-
+	m.init_devices(arduino_port="/dev/ttyACM0", uarm_port="/dev/ttyACM1")
 	m.start()
 
 if __name__ == '__main__':
