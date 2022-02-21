@@ -12,6 +12,7 @@ from rich.padding import Padding
 
 import socket
 import subprocess
+import sys
 
 import threading
 import time
@@ -20,7 +21,7 @@ import time
 class Mainframe(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
-		self.arduino = None
+		self.arduino = None;
 		self.uarm = None
 		self.selected_item = 0
 		self.display_changed = False
@@ -35,14 +36,16 @@ class Mainframe(threading.Thread):
 		self.button_states_old = [0 for _ in range(self.buttons)]
 
 
-	# setter for arduino reference
-	def set_arduino(self, arduino):
-		self.arduino = arduino
-
-
-	# setter for uarm reference
-	def set_uarm(self, uarm):
-		self.uarm = uarm
+	def init_devices(self, arduino_port, uarm_port):
+		from . import arduino
+		from . import uarm
+		self.arduino = arduino.SerialArduino(arduino_port, 9600)
+		self.arduino.set_mainframe(self)
+		self.arduino.start()
+		self.arduino.block_ready()
+		self.uarm = uarm.SerialUarm(uarm_port, 115200)
+		self.uarm.start()
+		self.uarm.block_ready()
 
 
 	# perform a button press
@@ -132,12 +135,12 @@ class Mainframe(threading.Thread):
 		# set uarm_temperature from self.uarm
 		if self.uarm.temperature == "unknown": uarm_temperature = "[yellow]unknown[/yellow]"
 		else: uarm_temperature = "[green]{}°C[/green]".format(self.uarm.uarm_temperature)
-
+		uarm_temperature = self.uarm.temperature
 
 		# split into 2 Panels showing data about uArm and LASER
 		layout["uarm_info"].split_row(
-			Layout(Panel(Padding(Align("uArm Speed: [green]{}[/green]\nuArm running: {}\nuArm temperature: {}".format(self.uarm.speed, uarm_running, uarm_temperature)), (1, 1)), box=box.SIMPLE)),
-			Layout(Panel(Padding(Align("LASER enabled: {}\nLASER active: {}\nLASER power: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
+			Layout(Panel(Padding(Align("uArm speed: [green]{}[/green]\nuArm running: {}\nuArm temperature: {}".format(self.uarm.speed, uarm_running, uarm_temperature)), (1, 1)), box=box.SIMPLE)),
+			Layout(Panel(Padding(Align("uArm device name: [green]{}[/green]\nuArm hardware version: [green]{}[/green]\nuArm firmware version: [green]{}[/green]".format(self.uarm.device_name, self.uarm.hardware_version, self.uarm.firmware_version)), (1, 1)), box=box.SIMPLE))
 		)
 
 
@@ -175,7 +178,7 @@ class Mainframe(threading.Thread):
 
 		# split into 2 Panels showing SSH and cooling data
 		layout["system_info_3"].split_row(
-			Layout(Panel(Padding(Align("SSH server running: {}\nSSH connected: {}\nSSH account: {}".format("", "", "")), (1, 1)), box=box.SIMPLE)),
+			Layout(Panel(Padding(Align("LASER enabled: {}\nLASER active: {}\nLASER power: {}".format("", "", "")), (1, 1)), box=box.SIMPLE)),
 			Layout(Panel(Padding(Align("Fan speed 1: {}\nFan speed 2: {}\nFan speed 3: {}".format("", "", "")), (1, 1)), box=box.SIMPLE))
 		)
 
@@ -212,11 +215,16 @@ class Mainframe(threading.Thread):
 			self.selected_item = self.selected_item + 1
 			if self.selected_item == self.items: self.selected_item = 0
 			self.display_changed = True
+		if button == 6:
+			self.uarm.start_laser()
+			self.arduino.wait_run_command("S_L R1 1")
 
 
 	# internally processes a button release
 	def _process_release_button(self, button):
-		pass
+		if button == 6:
+			self.uarm.stop_laser()
+			self.arduino.wait_run_command("S_L R1 0")
 
 
 	# called when a change in the self.button_states array was detected
