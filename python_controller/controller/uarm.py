@@ -4,7 +4,7 @@ import threading
 import time
 
 ###############
-# not used yet
+# not working yet
 ###############
 
 class SerialUarm(threading.Thread):
@@ -64,10 +64,12 @@ class SerialUarm(threading.Thread):
 	def get_firmware_version(self) -> str:
 		return self.run_querry_command("P2203")
 
-
+	
+	# WARNING: a current bug in the software causes the mainframe thread to hang after startinmg the laser
+	# Thus it will not be stopped if the LASER button is released
+	# THIS IS VERY DANGEROUS
 	def start_laser(self):
 		self.run_command("M2233 V1")
-
 
 	def stop_laser(self):
 		self.run_command("M2233 V0")
